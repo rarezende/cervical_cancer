@@ -10,14 +10,16 @@ def process_all_images():
     
     startTime = time.time()
     
-    rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/Data"
+    rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_work"
+    #rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_all"
     
-    imgSet1 = {"Source": "/full_resolution/train/Type_1/", "Dest": "/128x128/train/Type_1/"}
-    imgSet2 = {"Source": "/full_resolution/train/Type_2/", "Dest": "/128x128/train/Type_2/"}
-    imgSet3 = {"Source": "/full_resolution/train/Type_3/", "Dest": "/128x128/train/Type_3/"}
-    imgSet4 = {"Source": "/full_resolution/test/", "Dest": "/128x128/test/"}
+    imgSet1 = {"Source": "/full_resolution/train/Type_1/", "Dest": "/200x200/train/Type_1/"}
+    imgSet2 = {"Source": "/full_resolution/train/Type_2/", "Dest": "/200x200/train/Type_2/"}
+    imgSet3 = {"Source": "/full_resolution/train/Type_3/", "Dest": "/200x200/train/Type_3/"}
+    imgSet4 = {"Source": "/full_resolution/test/", "Dest": "/200x200/test/"}
     
     imgSets = [imgSet1, imgSet2, imgSet3, imgSet4]
+    #imgSets = [imgSet1, imgSet2, imgSet3]
     
     for imgSet in imgSets:
         print("Processing folder: {}".format(imgSet["Source"]), flush=True)
@@ -33,7 +35,7 @@ def process_all_images():
             outFile = destPath + fileName
             argList.append([inFile, outFile])
     
-        pool = multiprocessing.Pool(processes = 8)
+        pool = multiprocessing.Pool(processes = 6)
         result = pool.starmap_async(resize_image, argList)
         result.get()
         pool.close()
@@ -49,15 +51,17 @@ def resize_image(inFile, outFile):
     import skimage.io as io
     import skimage.transform as transf
 
+    new_size = (200, 200)
+    
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             
             inImage = io.imread(inFile)
-            outImage = transf.resize(inImage,(128,128), mode='reflect')
+            outImage = transf.resize(inImage, new_size, mode='reflect')
             io.imsave(outFile, outImage)    
         
-    except ValueError:
+    except:
         print("Could not process image: " + inFile, flush=True)
         
     return
