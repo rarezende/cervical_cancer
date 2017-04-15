@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 # -------------------------------------------------------------------------------------- #
 # Creation of training and test datasets
 
-rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_work/200x200/train"
+rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_work/Cropped_200x200/train"
 
 sourcePath = rootDir + "/Type_1/*.jpg"
 imgColl = io.imread_collection(sourcePath)
@@ -43,7 +43,7 @@ y_all = np_utils.to_categorical(y_all)
 #X_train = X_all
 #y_train = y_all
 
-X_train, X_test, y_train, y_test = train_test_split(X_all, y_all, test_size=0.2, random_state=31416)
+X_train, X_test, y_train, y_test = train_test_split(X_all, y_all, test_size=0.15, random_state=31416)
 
 
 #%%
@@ -74,7 +74,8 @@ def create_model():
     cnn.add(Dropout(0.5))
     cnn.add(Dense(3, activation="softmax"))
     
-    opt = keras.optimizers.rmsprop(lr=0.0001, decay=1e-6)
+    #opt = keras.optimizers.rmsprop(lr=0.0001, decay=1e-6)
+    opt = keras.optimizers.rmsprop(lr=0.000025, decay=1e-6)
 
     cnn.compile(loss="categorical_crossentropy", optimizer=opt, metrics=['accuracy'])
     
@@ -89,7 +90,8 @@ from keras.preprocessing.image import ImageDataGenerator
 startTime = time.time()
 
 batch_size = 32
-epochs = 80
+#epochs = 130
+epochs = 120
 
 datagen = ImageDataGenerator(
     featurewise_center=False,               # set input mean to 0 over the dataset
@@ -126,7 +128,7 @@ print("Total processing time: {:.2f} minutes".format((time.time()-startTime)/60)
 startTime = time.time()
 
 batch_size = 32
-epochs = 40
+epochs = 50
 
 classifier = create_model()
 
@@ -143,9 +145,9 @@ import pandas as pd
 
 rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/"
 
-sourcePath = rootDir + "data_work/200x200/test/*.jpg"
+sourcePath = rootDir + "data_work/Cropped_200x200/test/*.jpg"
 
-nameTrailer = 'C:/Users/rarez/Documents/Data Science/cervical_cancer/data_work/200x200/test\\'
+nameTrailer = 'C:/Users/rarez/Documents/Data Science/cervical_cancer/data_work/Cropped_200x200/test\\'
 
 imgColl = io.imread_collection(sourcePath)
 X_test = io.concatenate_images(imgColl)
