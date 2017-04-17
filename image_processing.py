@@ -10,16 +10,16 @@ def process_all_images():
     
     startTime = time.time()
     
-    rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_work"
-    #rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_all"
+    #rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_work"
+    rootDir = "C:/Users/rarez/Documents/Data Science/cervical_cancer/data_all"
     
-    imgSet1 = {"Source": "/full_resolution/train/Type_1/", "Dest": "/Cropped_200x200/train/Type_1/"}
-    imgSet2 = {"Source": "/full_resolution/train/Type_2/", "Dest": "/Cropped_200x200/train/Type_2/"}
-    imgSet3 = {"Source": "/full_resolution/train/Type_3/", "Dest": "/Cropped_200x200/train/Type_3/"}
-    imgSet4 = {"Source": "/full_resolution/test/", "Dest": "/Cropped_200x200/test/"}
+    imgSet1 = {"Source": "/full_resolution/train/Type_1/", "Dest": "/128x128/train/Type_1/"}
+    imgSet2 = {"Source": "/full_resolution/train/Type_2/", "Dest": "/128x128/train/Type_2/"}
+    imgSet3 = {"Source": "/full_resolution/train/Type_3/", "Dest": "/128x128/train/Type_3/"}
+    #imgSet4 = {"Source": "/full_resolution/test/", "Dest": "/Cropped_128x128/test/"}
     
-    imgSets = [imgSet1, imgSet2, imgSet3, imgSet4]
-    #imgSets = [imgSet1, imgSet2, imgSet3]
+    #imgSets = [imgSet1, imgSet2, imgSet3, imgSet4]
+    imgSets = [imgSet1, imgSet2, imgSet3]
     
     for imgSet in imgSets:
         print("Processing folder: {}".format(imgSet["Source"]), flush=True)
@@ -51,15 +51,16 @@ def process_image(inFile, outFile):
     import skimage.io as io
     import skimage.transform as transf
 
-    new_size = (200, 200)
+    new_size = (128, 128)
     
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             
             inImage = io.imread(inFile)
-            outImage = cropCervix(inImage)
-            outImage = transf.resize(outImage, new_size, mode='reflect')
+            outImage = transf.resize(inImage, new_size, mode='reflect')
+            #outImage = cropCervix(inImage)
+            #outImage = transf.resize(outImage, new_size, mode='reflect')
             io.imsave(outFile, outImage)    
         
     except:
@@ -67,114 +68,8 @@ def process_image(inFile, outFile):
         
     return
 
-def maxHist(hist):
-    maxArea = (0, 0, 0)
-    height = []
-    position = []
-    for i in range(len(hist)):
-        if (len(height) == 0):
-            if (hist[i] > 0):
-                height.append(hist[i])
-                position.append(i)
-        else: 
-            if (hist[i] > height[-1]):
-                height.append(hist[i])
-                position.append(i)
-            elif (hist[i] < height[-1]):
-                while (height[-1] > hist[i]):
-                    maxHeight = height.pop()
-                    area = maxHeight * (i-position[-1])
-                    if (area > maxArea[0]):
-                        maxArea = (area, position[-1], i)
-                    last_position = position.pop()
-                    if (len(height) == 0):
-                        break
-                position.append(last_position)
-                if (len(height) == 0):
-                    height.append(hist[i])
-                elif(height[-1] < hist[i]):
-                    height.append(hist[i])
-                else:
-                    position.pop()    
-    while (len(height) > 0):
-        maxHeight = height.pop()
-        last_position = position.pop()
-        area =  maxHeight * (len(hist) - last_position)
-        if (area > maxArea[0]):
-            maxArea = (area, len(hist), last_position)
-    return maxArea
-            
-
-def maxRect(img):
-    import numpy as np
-
-    maxArea = (0, 0, 0)
-    addMat = np.zeros(img.shape)
-    for r in range(img.shape[0]):
-        if r == 0:
-            addMat[r] = img[r]
-            area = maxHist(addMat[r])
-            if area[0] > maxArea[0]:
-                maxArea = area + (r,)
-        else:
-            addMat[r] = img[r] + addMat[r-1]
-            addMat[r][img[r] == 0] *= 0
-            area = maxHist(addMat[r])
-            if area[0] > maxArea[0]:
-                maxArea = area + (r,)
-    return (int(maxArea[3]+1-maxArea[0]/abs(maxArea[1]-maxArea[2])), maxArea[2], maxArea[3], maxArea[1], maxArea[0])
-
-def cropFrame(img):
-    import cv2
-    import numpy as np
-
-    out_size = 2048    
-    if(img.shape[0] > img.shape[1]):
-        tile_size = (int(img.shape[1]*out_size/img.shape[0]), out_size)
-    else:
-        tile_size = (out_size, int(img.shape[0]*out_size/img.shape[1]))
-
-    img = cv2.resize(img, dsize=tile_size)
-            
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY);
-    _, thresh = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
-
-    _, contours, _ = cv2.findContours(thresh.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
-
-    main_contour = sorted(contours, key = cv2.contourArea, reverse = True)[0]
-            
-    ff = np.zeros((gray.shape[0],gray.shape[1]), 'uint8') 
-    cv2.drawContours(ff, main_contour, -1, 1, 15)
-    ff_mask = np.zeros((gray.shape[0]+2,gray.shape[1]+2), 'uint8')
-    cv2.floodFill(ff, ff_mask, (int(gray.shape[1]/2), int(gray.shape[0]/2)), 1)
-    
-    rect = maxRect(ff)
-    img_crop = img[min(rect[0],rect[2]):max(rect[0],rect[2]), min(rect[1],rect[3]):max(rect[1],rect[3])]
-    #cv2.rectangle(ff,(min(rect[1],rect[3]),min(rect[0],rect[2])),(max(rect[1],rect[3]),max(rect[0],rect[2])),3,2)
-
-    return img_crop
-
-
-def Ra_space(img, Ra_ratio, a_threshold):
-    import math
-    import cv2
-    import numpy as np
-
-    imgLab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB);
-    w = img.shape[0]
-    h = img.shape[1]
-    Ra = np.zeros((w*h, 2))
-    for i in range(w):
-        for j in range(h):
-            R = math.sqrt((w/2-i)*(w/2-i) + (h/2-j)*(h/2-j))
-            Ra[i*h+j, 0] = R
-            Ra[i*h+j, 1] = min(imgLab[i][j][1], a_threshold)
-            
-    Ra[:,0] /= max(Ra[:,0])
-    Ra[:,0] *= Ra_ratio
-    Ra[:,1] /= max(Ra[:,1])
-
-    return Ra
+# --------------------------------------------------------------------------- #
+# Identify the Cervix and crop the image around it
 
 def cropCervix(img):
     import cv2
@@ -236,9 +131,117 @@ def cropCervix(img):
     imgCervix = img[y:y+h, x:x+w]
     
     return imgCervix
-    
-    
 
+def cropFrame(img):
+    import cv2
+    import numpy as np
+
+    out_size = 2048    
+    if(img.shape[0] > img.shape[1]):
+        tile_size = (int(img.shape[1]*out_size/img.shape[0]), out_size)
+    else:
+        tile_size = (out_size, int(img.shape[0]*out_size/img.shape[1]))
+
+    img = cv2.resize(img, dsize=tile_size)
+            
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY);
+    _, thresh = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
+
+    _, contours, _ = cv2.findContours(thresh.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+
+    main_contour = sorted(contours, key = cv2.contourArea, reverse = True)[0]
+            
+    ff = np.zeros((gray.shape[0],gray.shape[1]), 'uint8') 
+    cv2.drawContours(ff, main_contour, -1, 1, 15)
+    ff_mask = np.zeros((gray.shape[0]+2,gray.shape[1]+2), 'uint8')
+    cv2.floodFill(ff, ff_mask, (int(gray.shape[1]/2), int(gray.shape[0]/2)), 1)
+    
+    rect = maxRect(ff)
+    img_crop = img[min(rect[0],rect[2]):max(rect[0],rect[2]), min(rect[1],rect[3]):max(rect[1],rect[3])]
+
+    return img_crop
+
+
+def Ra_space(img, Ra_ratio, a_threshold):
+    import math
+    import cv2
+    import numpy as np
+
+    imgLab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB);
+    w = img.shape[0]
+    h = img.shape[1]
+    Ra = np.zeros((w*h, 2))
+    for i in range(w):
+        for j in range(h):
+            R = math.sqrt((w/2-i)*(w/2-i) + (h/2-j)*(h/2-j))
+            Ra[i*h+j, 0] = R
+            Ra[i*h+j, 1] = min(imgLab[i][j][1], a_threshold)
+            
+    Ra[:,0] /= max(Ra[:,0])
+    Ra[:,0] *= Ra_ratio
+    Ra[:,1] /= max(Ra[:,1])
+
+    return Ra
+
+
+def maxHist(hist):
+    maxArea = (0, 0, 0)
+    height = []
+    position = []
+    for i in range(len(hist)):
+        if (len(height) == 0):
+            if (hist[i] > 0):
+                height.append(hist[i])
+                position.append(i)
+        else: 
+            if (hist[i] > height[-1]):
+                height.append(hist[i])
+                position.append(i)
+            elif (hist[i] < height[-1]):
+                while (height[-1] > hist[i]):
+                    maxHeight = height.pop()
+                    area = maxHeight * (i-position[-1])
+                    if (area > maxArea[0]):
+                        maxArea = (area, position[-1], i)
+                    last_position = position.pop()
+                    if (len(height) == 0):
+                        break
+                position.append(last_position)
+                if (len(height) == 0):
+                    height.append(hist[i])
+                elif(height[-1] < hist[i]):
+                    height.append(hist[i])
+                else:
+                    position.pop()    
+    while (len(height) > 0):
+        maxHeight = height.pop()
+        last_position = position.pop()
+        area =  maxHeight * (len(hist) - last_position)
+        if (area > maxArea[0]):
+            maxArea = (area, len(hist), last_position)
+    return maxArea
+            
+
+def maxRect(img):
+    import numpy as np
+
+    maxArea = (0, 0, 0)
+    addMat = np.zeros(img.shape)
+    for r in range(img.shape[0]):
+        if r == 0:
+            addMat[r] = img[r]
+            area = maxHist(addMat[r])
+            if area[0] > maxArea[0]:
+                maxArea = area + (r,)
+        else:
+            addMat[r] = img[r] + addMat[r-1]
+            addMat[r][img[r] == 0] *= 0
+            area = maxHist(addMat[r])
+            if area[0] > maxArea[0]:
+                maxArea = area + (r,)
+    return (int(maxArea[3]+1-maxArea[0]/abs(maxArea[1]-maxArea[2])), maxArea[2], maxArea[3], maxArea[1], maxArea[0])
+
+    
     
 # -------------------------------------------------------------------------------------- #
 # Main module function
