@@ -5,6 +5,7 @@
 import time
 import numpy as np
 import skimage.io as io
+import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Conv2D, Dense, Dropout, Flatten, MaxPooling2D
@@ -19,12 +20,10 @@ def create_convnet(inShape, lr):
     cnn = Sequential()
     cnn.add(Conv2D(64, (3, 3), padding="same", activation="relu", input_shape=inShape))
     cnn.add(Conv2D(64, (3, 3), padding="same", activation="relu"))
-    cnn.add(Conv2D(64, (3, 3), padding="same", activation="relu"))
     cnn.add(MaxPooling2D(pool_size=(2,2)))
 
     cnn.add(Conv2D(128, (3, 3), padding="same", activation="relu"))
     cnn.add(Conv2D(128, (3, 3), padding="same", activation="relu"))
-    cnn.add(Conv2D(128, (3, 3), padding="same", activation="relu"))
     cnn.add(MaxPooling2D(pool_size=(2,2)))
     
     cnn.add(Conv2D(256, (3, 3), padding="same", activation="relu"))
@@ -32,15 +31,22 @@ def create_convnet(inShape, lr):
     cnn.add(Conv2D(256, (3, 3), padding="same", activation="relu"))
     cnn.add(MaxPooling2D(pool_size=(2,2)))
     
-    cnn.add(Conv2D(256, (3, 3), padding="same", activation="relu"))
-    cnn.add(Conv2D(256, (3, 3), padding="same", activation="relu"))
-    cnn.add(Conv2D(256, (3, 3), padding="same", activation="relu"))
+    cnn.add(Conv2D(512, (3, 3), padding="same", activation="relu"))
+    cnn.add(Conv2D(512, (3, 3), padding="same", activation="relu"))
+    cnn.add(Conv2D(512, (3, 3), padding="same", activation="relu"))
+    cnn.add(MaxPooling2D(pool_size=(2,2)))
+
+    cnn.add(Conv2D(512, (3, 3), padding="same", activation="relu"))
+    cnn.add(Conv2D(512, (3, 3), padding="same", activation="relu"))
+    cnn.add(Conv2D(512, (3, 3), padding="same", activation="relu"))
     cnn.add(MaxPooling2D(pool_size=(2,2)))
 
     cnn.add(Flatten())
-    cnn.add(Dense(512, activation="relu"))
+    cnn.add(Dense(4096, activation="relu"))
     cnn.add(Dropout(0.5))
-    cnn.add(Dense(512, activation="relu"))
+    cnn.add(Dense(4096, activation="relu"))
+    cnn.add(Dropout(0.5))
+    cnn.add(Dense(128, activation="relu"))
     cnn.add(Dropout(0.5))
     cnn.add(Dense(3, activation="softmax"))
     
@@ -90,25 +96,21 @@ datagen = ImageDataGenerator(
     featurewise_std_normalization=False,    # divide inputs by std of the dataset
     samplewise_std_normalization=False,     # divide each input by its std
     zca_whitening=False,                    # apply ZCA whitening
-    rotation_range=0,                      # randomly rotate images in the range (degrees, 0 to 180)
+    rotation_range=20,                       # randomly rotate images in the range (degrees, 0 to 180)
     shear_range=0.2,
-    zoom_range=0.2,    
-    width_shift_range=0.1,                 # randomly shift images horizontally (fraction of total width)
-    height_shift_range=0.1,                # randomly shift images vertically (fraction of total height)
+    zoom_range=0.2,     
+    width_shift_range=0.2,                  # randomly shift images horizontally (fraction of total width)
+    height_shift_range=0.2,                 # randomly shift images vertically (fraction of total height)
     horizontal_flip=True,                   # randomly flip images
     vertical_flip=True)                     # randomly flip images
 
 
 batch_size = 32
-epochs = 120
+epochs = 80
 lr = 0.0001/5
 
-X_train = X_all
-y_train = y_all
-validation_data = None
-
-#X_train, X_test, y_train, y_test = train_test_split(X_all, y_all, test_size=0.15, random_state=31416)
-#validation_data = (X_test, y_test)
+test_size = 0.15
+X_train, X_test, y_train, y_test = train_test_split(X_all, y_all, test_size=test_size, random_state=31416)
 
 classifier = create_convnet(X_train.shape[1:], lr)
 
@@ -120,8 +122,22 @@ datagen.fit(X_train)
 history = classifier.fit_generator(datagen.flow(X_train, y_train, batch_size=batch_size),
                                    steps_per_epoch=X_train.shape[0] // batch_size,
                                    epochs=epochs,
-                                   validation_data=validation_data,
-                                   workers=6)
+                                   validation_data=(X_test, y_test),
+                                   workers=8)
+
+# summarize history for loss
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper right')
+plt.minorticks_on()
+plt.ylim((0.74,1.04))
+plt.yticks(np.arange(0.74,1.04,0.02))
+plt.grid(b=True, which='major', color='black', linestyle='--')
+plt.show()
+
 
 print("Total processing time: {:.2f} minutes".format((time.time()-startTime)/60))
 
@@ -159,13 +175,19 @@ submission.to_csv("C:/Users/rarez/Documents/Data Science/cervical_cancer/submiss
 
 import matplotlib.pyplot as plt
 # summarize history for loss
+fig = plt.figure()
+ax = fig.gca()
+ax.set_xticks(np.arange(0, 100, 10))
+ax.set_yticks(np.arange(0.7, 1., 0.01))
+
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.legend(['train', 'test'], loc='upper right')
 plt.show()
+
 
 
 #%%
